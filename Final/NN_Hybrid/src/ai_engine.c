@@ -1,13 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #include "ai_engine.h"
 #include "board.h"
 #include "game.h" // 为了使用 check_win 模拟简单的搜索
 #include "rules.h"
 
-// 引入我们“训练”出来的权重
+// 引入我们"训练"出来的权重
 #include "model_weights.h"
+
+// 时间限制相关
+#define TIME_LIMIT_MS 14500  // 14.5秒限制（留0.5秒余量）
+static clock_t search_start_time;
+static int time_up = 0;
+
+static int check_time(void) {
+    clock_t now = clock();
+    double elapsed = (double)(now - search_start_time) * 1000.0 / CLOCKS_PER_SEC;
+    return elapsed >= TIME_LIMIT_MS;
+}
 
 // 简单的激活函数 (ReLU)
 // f(x) = max(0, x)
@@ -408,6 +420,12 @@ int evaluate_full_board(Board *board, int ai_color) {
 // alpha, beta: 剪枝边界
 // is_maximizing: 当前是否为最大化层（AI 回合）
 int minimax(Board *board, int depth, int alpha, int beta, int is_maximizing, int ai_color) {
+    // 时间检查
+    if (time_up || check_time()) {
+        time_up = 1;
+        return evaluate_full_board(board, ai_color);
+    }
+    
     if (depth == 0) {
         return evaluate_full_board(board, ai_color);
     }
@@ -479,6 +497,10 @@ int minimax(Board *board, int depth, int alpha, int beta, int is_maximizing, int
 // AI 决策入口函数
 // 结合神经网络（直觉）和 Minimax 搜索（计算）来决定最佳落子
 void get_ai_move(Board *board, int *row, int *col, int ai_color) {
+    // 初始化时间限制
+    search_start_time = clock();
+    time_up = 0;
+    
     // 使用 Minimax 搜索
     Move moves[400];
     int count = get_candidates(board, moves);

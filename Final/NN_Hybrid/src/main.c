@@ -22,8 +22,10 @@ int main() {
     // 游戏主循环，支持“再来一局”功能
     while (play_again) {
         Board board;
-        init_board(&board); // 初始化棋盘
-
+        init_board(&board); // 初始化棋盘        
+        // AI 思考时间统计
+        double total_ai_time = 0.0;
+        int ai_move_count = 0;
         int mode = 0;
         int ai_player = 0; // 0: 无AI, 1: AI执黑, 2: AI执白, 3: 双方AI
 
@@ -66,17 +68,27 @@ int main() {
                 // EvE 模式下增加延迟，方便观察
                 if (mode == 3) {
                     #ifdef _WIN32
-                    Sleep(1000); // 延迟 1 秒
+                    Sleep(500); // 延迟 0.5 秒
                     #else
-                    usleep(1000000);
+                    usleep(500000);
                     #endif
                 }
 
                 int r, c;
+                // 记录 AI 开始思考时间
+                clock_t ai_start = clock();
+                
                 // 获取 AI 的落子位置
                 get_ai_move(&board, &r, &c, current_player);
                 
+                // 计算 AI 思考时长
+                clock_t ai_end = clock();
+                double ai_duration = (double)(ai_end - ai_start) / CLOCKS_PER_SEC;
+                total_ai_time += ai_duration;
+                ai_move_count++;
+                
                 printf("AI plays at %c%d\n", 'A' + c, r + 1);
+                printf("Time: %.2fs (Avg: %.2fs)\n", ai_duration, total_ai_time / ai_move_count);
 
                 // AI 执黑时，理论上也需要检查禁手（虽然 AI 应该避免禁手）
                 if (current_player == BLACK && is_forbidden(&board, r, c)) {
